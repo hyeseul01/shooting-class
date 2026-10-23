@@ -48,7 +48,7 @@
 </div>
 
 <script>
-  const GAS_API_URL = "https://script.google.com/macros/s/YOUR_EXEC_ID/exec"; // 본인 배포 URL 입력
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycby4BY06tjraNgRM377HCpPUUNJijRPIFUPEJWWHy-4C1DhWNZgggICS9aeK6E83x-lW_w/exec"; // 본인 배포 URL 입력
 
   let rawData = {};
   let currentCategory = "기록사격";
