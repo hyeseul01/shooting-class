@@ -8,12 +8,23 @@
     * { box-sizing: border-box; }
     body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
     .container { max-width: 1100px; margin: 0 auto; }
-    h1 { text-align: center; color: #1a237e; margin-bottom: 25px; }
+    h1 { text-align: center; color: #1a237e; margin-bottom: 20px; }
 
-    /* 종목 탭 버튼 */
-    .tab-buttons { display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; }
-    .tab-btn { padding: 12px 28px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
+    /* 제어 영역 */
+    .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
+    .tab-buttons { display: flex; gap: 10px; }
+    .tab-btn { padding: 10px 22px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
     .tab-btn.active { background-color: #1a237e; color: #ffffff; box-shadow: 0 4px 6px rgba(26,35,126,0.2); }
+
+    /* 새로고침 패널 (드롭다운 + 수동 버튼 + 상태 표시) */
+    .refresh-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #718096; }
+    .refresh-select { padding: 7px 10px; font-size: 13px; font-weight: 500; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; outline: none; }
+    .refresh-select:focus { border-color: #1a237e; }
+    .refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+    .refresh-btn:hover { background-color: #edf2f7; }
+    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
 
     /* TOP 3 카드 영역 */
     .top3-container { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 35px; flex-wrap: wrap; }
@@ -40,10 +51,30 @@
 <div class="container">
   <h1>🎯 사격 대회 실시간 대시보드</h1>
 
-  <!-- 종목 전환 탭 -->
-  <div class="tab-buttons">
-    <button class="tab-btn active" onclick="switchCategory('기록사격')">기록사격</button>
-    <button class="tab-btn" onclick="switchCategory('속사')">속사</button>
+  <div class="controls">
+    <!-- 종목 전환 탭 -->
+    <div class="tab-buttons">
+      <button class="tab-btn active" onclick="switchCategory('기록사격')">기록사격</button>
+      <button class="tab-btn" onclick="switchCategory('속사')">속사</button>
+    </div>
+
+    <!-- 새로고침 및 주기 선택 컨트롤 -->
+    <div class="refresh-panel">
+      <label for="interval-select">주기:</label>
+      <select id="interval-select" class="refresh-select" onchange="changeInterval()">
+        <option value="5000">5초</option>
+        <option value="10000" selected>10초</option>
+        <option value="30000">30초</option>
+        <option value="60000">1분</option>
+        <option value="0">자동 갱신 끄기</option>
+      </select>
+
+      <button class="refresh-btn" id="btn-refresh" onclick="manualRefresh()">
+        <span id="refresh-icon">🔄</span> 즉시 새로고침
+      </button>
+
+      <span id="last-updated">확인 중...</span>
+    </div>
   </div>
 
   <!-- 전체 TOP 3 -->
@@ -61,15 +92,57 @@
 
   let rawData = {};
   let currentCategory = "기록사격";
+  let intervalTimer = null;
+  let currentInterval = 10000; // 기본값: 10초
 
   async function fetchData() {
+    const refreshBtn = document.getElementById('btn-refresh');
+    const refreshIcon = document.getElementById('refresh-icon');
+
     try {
+      refreshBtn.disabled = true;
+      refreshIcon.classList.add('spin');
+
       const res = await fetch(GAS_API_URL);
       rawData = await res.json();
+
       render();
+      updateTimestamp();
     } catch (err) {
       console.error("데이터 로드 실패:", err);
+      document.getElementById('last-updated').innerText = "갱신 실패";
+    } finally {
+      refreshBtn.disabled = false;
+      refreshIcon.classList.remove('spin');
     }
+  }
+
+  // 사용자가 드롭다운에서 주기를 바꿨을 때 실행
+  function changeInterval() {
+    const select = document.getElementById('interval-select');
+    currentInterval = parseInt(select.value, 10);
+    resetTimer();
+  }
+
+  // 타이머 재설정 로직
+  function resetTimer() {
+    if (intervalTimer) clearInterval(intervalTimer);
+
+    if (currentInterval > 0) {
+      intervalTimer = setInterval(fetchData, currentInterval);
+    }
+  }
+
+  // 수동 즉시 새로고침 (클릭 시 타이머 주기 초기화)
+  function manualRefresh() {
+    fetchData();
+    resetTimer();
+  }
+
+  function updateTimestamp() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+    document.getElementById('last-updated').innerText = `(${timeStr})`;
   }
 
   function switchCategory(category) {
@@ -82,8 +155,6 @@
 
   function render() {
     const list = rawData[currentCategory] || [];
-    
-    // 전체 순위 오름차순 정렬
     list.sort((a, b) => a.rank - b.rank);
 
     // 1. TOP 3 렌더링
@@ -116,8 +187,7 @@
     let classTablesHtml = "";
     Object.keys(groupedByClass).sort().forEach(className => {
       const members = groupedByClass[className];
-      
-      // 회차 열 동적 생성 (최대 회차 수 계산)
+
       const maxRounds = Math.max(...members.map(m => m.scores.length), 0);
       let roundHeadersHtml = "";
       for (let r = 1; r <= maxRounds; r++) {
@@ -163,9 +233,9 @@
     document.getElementById('class-tables').innerHTML = classTablesHtml || "<p>표시할 데이터가 없습니다.</p>";
   }
 
-  // 초기 실행 및 10초 주기 자동 갱신
+  // 초기 1회 로드 및 기본 주기 타이머 시작
   fetchData();
-  setInterval(fetchData, 10000);
+  resetTimer();
 </script>
 
 </body>
