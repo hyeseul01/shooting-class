@@ -12,14 +12,17 @@
 
     /* 제어 영역 */
     .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
-    .tab-buttons { display: flex; gap: 10px; }
-    .tab-btn { padding: 10px 22px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
+    .left-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .tab-buttons { display: flex; gap: 8px; }
+    .tab-btn { padding: 9px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
     .tab-btn.active { background-color: #1a237e; color: #ffffff; box-shadow: 0 4px 6px rgba(26,35,126,0.2); }
 
-    /* 새로고침 패널 (드롭다운 + 수동 버튼 + 상태 표시) */
+    /* 필터 및 드롭다운 스타일 */
+    .select-box { padding: 8px 12px; font-size: 14px; font-weight: 500; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; outline: none; }
+    .select-box:focus { border-color: #1a237e; }
+
+    /* 새로고침 패널 */
     .refresh-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #718096; }
-    .refresh-select { padding: 7px 10px; font-size: 13px; font-weight: 500; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; outline: none; }
-    .refresh-select:focus { border-color: #1a237e; }
     .refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
     .refresh-btn:hover { background-color: #edf2f7; }
     .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -52,16 +55,23 @@
   <h1>🎯 사격 대회 실시간 대시보드</h1>
 
   <div class="controls">
-    <!-- 종목 전환 탭 -->
-    <div class="tab-buttons">
-      <button class="tab-btn active" onclick="switchCategory('기록사격')">기록사격</button>
-      <button class="tab-btn" onclick="switchCategory('속사')">속사</button>
+    <div class="left-controls">
+      <!-- 종목 전환 탭 -->
+      <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchCategory('기록사격')">기록사격</button>
+        <button class="tab-btn" onclick="switchCategory('속사')">속사</button>
+      </div>
+
+      <!-- 반 선택 필터 -->
+      <select id="class-filter" class="select-box" onchange="filterClass()">
+        <option value="ALL">전체 반 보기</option>
+      </select>
     </div>
 
     <!-- 새로고침 및 주기 선택 컨트롤 -->
     <div class="refresh-panel">
       <label for="interval-select">주기:</label>
-      <select id="interval-select" class="refresh-select" onchange="changeInterval()">
+      <select id="interval-select" class="select-box" onchange="changeInterval()">
         <option value="5000">5초</option>
         <option value="10000" selected>10초</option>
         <option value="30000">30초</option>
@@ -82,18 +92,19 @@
   <div class="top3-container" id="top3-cards"></div>
 
   <!-- 반별 순위표 -->
-  <div class="section-title">📊 반별 순위표</div>
+  <div class="section-title" id="tables-title">📊 반별 순위표</div>
   <div id="class-tables"></div>
 </div>
 
 <script>
   // ⚠️ 본인의 Apps Script 웹 앱 배포 URL을 입력하세요.
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxY9Sjcb4K6k51akJnA0H0ggFRACSeQFgH-2-lym5-llPv5OmEyTiR3_LjB8mUvWT5ztw/exec";
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycby5CqaRP8M0BP8e39-iDtIp7IVArjPLRyNbmEmsf7Jb5hXv3LoCrbjJoCUNvzpeSR6aPg/exec";
 
   let rawData = {};
   let currentCategory = "기록사격";
+  let selectedClass = "ALL"; // 선택된 반 (기본값: 전체 반)
   let intervalTimer = null;
-  let currentInterval = 10000; // 기본값: 10초
+  let currentInterval = 10000;
 
   async function fetchData() {
     const refreshBtn = document.getElementById('btn-refresh');
@@ -106,6 +117,7 @@
       const res = await fetch(GAS_API_URL);
       rawData = await res.json();
 
+      updateClassFilterOptions(); // 반 필터 드롭다운 옵션 갱신
       render();
       updateTimestamp();
     } catch (err) {
@@ -117,23 +129,54 @@
     }
   }
 
-  // 사용자가 드롭다운에서 주기를 바꿨을 때 실행
+  // 데이터에 포함된 반 목록을 추출하여 필터 드롭다운 동적 생성
+  function updateClassFilterOptions() {
+    const list = rawData[currentCategory] || [];
+    const filterSelect = document.getElementById('class-filter');
+    
+    // 고유 반 목록 추출 및 정렬 (6반, 7반, 8반...)
+    const uniqueClasses = Array.from(new Set(list.map(item => item.class ? item.class.toString() : "")))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    // 기존 선택값 보존
+    const prevSelection = selectedClass;
+
+    let optionsHtml = `<option value="ALL">전체 반 보기</option>`;
+    uniqueClasses.forEach(cls => {
+      optionsHtml += `<option value="${cls}">${cls}</option>`;
+    });
+
+    filterSelect.innerHTML = optionsHtml;
+
+    // 이전 선택값이 유효하면 유지, 없으면 ALL로 리셋
+    if (uniqueClasses.includes(prevSelection) || prevSelection === "ALL") {
+      filterSelect.value = prevSelection;
+      selectedClass = prevSelection;
+    } else {
+      filterSelect.value = "ALL";
+      selectedClass = "ALL";
+    }
+  }
+
+  function filterClass() {
+    selectedClass = document.getElementById('class-filter').value;
+    render();
+  }
+
   function changeInterval() {
     const select = document.getElementById('interval-select');
     currentInterval = parseInt(select.value, 10);
     resetTimer();
   }
 
-  // 타이머 재설정 로직
   function resetTimer() {
     if (intervalTimer) clearInterval(intervalTimer);
-
     if (currentInterval > 0) {
       intervalTimer = setInterval(fetchData, currentInterval);
     }
   }
 
-  // 수동 즉시 새로고침 (클릭 시 타이머 주기 초기화)
   function manualRefresh() {
     fetchData();
     resetTimer();
@@ -150,14 +193,15 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.innerText === category);
     });
+    updateClassFilterOptions();
     render();
   }
 
   function render() {
     const list = rawData[currentCategory] || [];
-    list.sort((a, b) => a.rank - b.rank);
+    list.sort((a, b) => a.overallRank - b.overallRank);
 
-    // 1. TOP 3 렌더링
+    // 1. TOP 3 렌더링 (전체 기준 유지)
     const top3 = list.slice(0, 3);
     const medals = ["🥇 1위", "🥈 2위", "🥉 3위"];
     const classNames = ["rank1", "rank2", "rank3"];
@@ -177,16 +221,24 @@
     }).join('');
     document.getElementById('top3-cards').innerHTML = top3Html;
 
-    // 2. 반별 데이터 그룹화 및 테이블 렌더링
+    // 2. 반별 데이터 그룹화
     const groupedByClass = {};
     list.forEach(item => {
-      if (!groupedByClass[item.class]) groupedByClass[item.class] = [];
-      groupedByClass[item.class].push(item);
+      const cName = item.class ? item.class.toString() : "미지정";
+      if (!groupedByClass[cName]) groupedByClass[cName] = [];
+      groupedByClass[cName].push(item);
     });
 
+    // 3. 필터링 대상 반 목록 결정 (특정 반 vs 전체 반)
+    let displayClasses = Object.keys(groupedByClass).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    if (selectedClass !== "ALL") {
+      displayClasses = displayClasses.filter(c => c === selectedClass);
+    }
+
     let classTablesHtml = "";
-    Object.keys(groupedByClass).sort().forEach(className => {
+    displayClasses.forEach(className => {
       const members = groupedByClass[className];
+      members.sort((a, b) => a.classRank - b.classRank);
 
       const maxRounds = Math.max(...members.map(m => m.scores.length), 0);
       let roundHeadersHtml = "";
@@ -201,6 +253,7 @@
             <thead>
               <tr>
                 <th>반 순위</th>
+                <th>전체 순위</th>
                 <th>번호</th>
                 <th>이름</th>
                 <th>최고기록</th>
@@ -208,7 +261,7 @@
               </tr>
             </thead>
             <tbody>
-              ${members.map((m, idx) => {
+              ${members.map(m => {
                 let scoreTdHtml = "";
                 for (let r = 0; r < maxRounds; r++) {
                   const val = m.scores[r];
@@ -216,7 +269,8 @@
                 }
                 return `
                   <tr>
-                    <td class="highlight-rank"><b>${idx + 1}위</b> (전체 ${m.rank}위)</td>
+                    <td class="highlight-rank"><b>${m.classRank}위</b></td>
+                    <td>전체 ${m.overallRank}위</td>
                     <td>${m.number}</td>
                     <td>${m.name}</td>
                     <td><b style="color:#d32f2f;">${m.best}점</b></td>
@@ -233,7 +287,6 @@
     document.getElementById('class-tables').innerHTML = classTablesHtml || "<p>표시할 데이터가 없습니다.</p>";
   }
 
-  // 초기 1회 로드 및 기본 주기 타이머 시작
   fetchData();
   resetTimer();
 </script>
