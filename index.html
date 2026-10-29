@@ -98,7 +98,7 @@
 
 <script>
   // ⚠️ 본인의 Apps Script 웹 앱 배포 URL을 입력하세요.
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxu59MwZUkdG74LZzw4O-UGX9R7V-H_YgFHG1pFZRfby8rEzJf76pXQn02dIFI_8XnJCQ/exec";
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyljdqRLhGYe4WNjJhIxplyccRGEIPL7vYrRi9hMHqp05OAoq4aT_zhwY2J3LB45jY7pw/exec";
 
   let rawData = {};
   let currentCategory = "기록사격";
@@ -129,4 +129,191 @@
     }
   }
 
-  function
+  function updateClassFilterOptions() {
+    const list = rawData[currentCategory] || [];
+    const filterSelect = document.getElementById('class-filter');
+    
+    const uniqueClasses = Array.from(new Set(list.map(item => item.class ? item.class.toString() : "")))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    const prevSelection = selectedClass;
+
+    let optionsHtml = `<option value="ALL">전체 반 보기 (통합 순위)</option>`;
+    uniqueClasses.forEach(cls => {
+      optionsHtml += `<option value="${cls}">${cls}</option>`;
+    });
+
+    filterSelect.innerHTML = optionsHtml;
+
+    if (uniqueClasses.includes(prevSelection) || prevSelection === "ALL") {
+      filterSelect.value = prevSelection;
+      selectedClass = prevSelection;
+    } else {
+      filterSelect.value = "ALL";
+      selectedClass = "ALL";
+    }
+  }
+
+  function filterClass() {
+    selectedClass = document.getElementById('class-filter').value;
+    render();
+  }
+
+  function changeInterval() {
+    const select = document.getElementById('interval-select');
+    currentInterval = parseInt(select.value, 10);
+    resetTimer();
+  }
+
+  function resetTimer() {
+    if (intervalTimer) clearInterval(intervalTimer);
+    if (currentInterval > 0) {
+      intervalTimer = setInterval(fetchData, currentInterval);
+    }
+  }
+
+  function manualRefresh() {
+    fetchData();
+    resetTimer();
+  }
+
+  function updateTimestamp() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+    document.getElementById('last-updated').innerText = `(${timeStr})`;
+  }
+
+  function switchCategory(category) {
+    currentCategory = category;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.innerText === category);
+    });
+    updateClassFilterOptions();
+    render();
+  }
+
+  function render() {
+    const list = rawData[currentCategory] || [];
+    list.sort((a, b) => a.overallRank - b.overallRank);
+
+    // 1. TOP 3 렌더링
+    const top3 = list.slice(0, 3);
+    const medals = ["🥇 1위", "🥈 2위", "🥉 3위"];
+    const classNames = ["rank1", "rank2", "rank3"];
+
+    const top3Html = [0, 1, 2].map(idx => {
+      const item = top3[idx];
+      if (!item) {
+        return `<div class="card ${classNames[idx]}"><div class="badge">${medals[idx]}</div><div>기록 없음</div></div>`;
+      }
+      return `
+        <div class="card ${classNames[idx]}">
+          <div class="badge">${medals[idx]}</div>
+          <div class="player-info">${item.class} ${item.number}번 ${item.name}</div>
+          <div class="score">최고 ${item.best}점</div>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('top3-cards').innerHTML = top3Html;
+
+    // 2. 전체 회차 수 계산 (공통 헤더용)
+    const maxRounds = Math.max(...list.map(m => (m.scores ? m.scores.length : 0)), 0);
+    let roundHeadersHtml = "";
+    for (let r = 1; r <= maxRounds; r++) {
+      roundHeadersHtml += `<th>${r}회차</th>`;
+    }
+
+    let tablesHtml = "";
+
+    // 3. '전체 반 보기' vs '특정 반 보기' 분기 처리
+    if (selectedClass === "ALL") {
+      // [전체 반 보기] -> 모든 반 학생을 전체 순위대로 하나의 표에 합쳐서 표시
+      tablesHtml = `
+        <h3>📌 전체 반 종합 순위표 (총 ${list.length}명)</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>전체 순위</th>
+                <th>반</th>
+                <th>번호</th>
+                <th>이름</th>
+                <th>최고기록</th>
+                ${roundHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(m => {
+                let scoreTdHtml = "";
+                for (let r = 0; r < maxRounds; r++) {
+                  const val = m.scores ? m.scores[r] : undefined;
+                  scoreTdHtml += `<td>${val !== undefined && val !== "" ? val : '-'}</td>`;
+                }
+                return `
+                  <tr>
+                    <td class="highlight-rank"><b>${m.overallRank}위</b></td>
+                    <td><b>${m.class}</b></td>
+                    <td>${m.number}</td>
+                    <td>${m.name}</td>
+                    <td><b style="color:#d32f2f;">${m.best}점</b></td>
+                    ${scoreTdHtml}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      // [특정 반 선택 시] -> 해당 반 학생만 필터링하여 반 순위 기준으로 표시
+      const members = list.filter(m => (m.class ? m.class.toString() : "") === selectedClass);
+      members.sort((a, b) => a.classRank - b.classRank);
+
+      tablesHtml = `
+        <h3>📌 ${selectedClass} 순위표 (총 ${members.length}명)</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>반 순위</th>
+                <th>전체 순위</th>
+                <th>번호</th>
+                <th>이름</th>
+                <th>최고기록</th>
+                ${roundHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${members.map(m => {
+                let scoreTdHtml = "";
+                for (let r = 0; r < maxRounds; r++) {
+                  const val = m.scores ? m.scores[r] : undefined;
+                  scoreTdHtml += `<td>${val !== undefined && val !== "" ? val : '-'}</td>`;
+                }
+                return `
+                  <tr>
+                    <td class="highlight-rank"><b>${m.classRank}위</b></td>
+                    <td>전체 ${m.overallRank}위</td>
+                    <td>${m.number}</td>
+                    <td>${m.name}</td>
+                    <td><b style="color:#d32f2f;">${m.best}점</b></td>
+                    ${scoreTdHtml}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    document.getElementById('class-tables').innerHTML = tablesHtml || "<p>표시할 데이터가 없습니다.</p>";
+  }
+
+  fetchData();
+  resetTimer();
+</script>
+
+</body>
+</html>
