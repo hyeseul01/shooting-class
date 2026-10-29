@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>사격 대회 실시간 대시보드</title>
+  <title>사격 수업 실시간 순위표</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
@@ -17,7 +17,7 @@
     .tab-btn { padding: 9px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
     .tab-btn.active { background-color: #1a237e; color: #ffffff; box-shadow: 0 4px 6px rgba(26,35,126,0.2); }
 
-    /* 필터 및 드롭다운 스타일 */
+    /* 필터 및 드롭다운 */
     .select-box { padding: 8px 12px; font-size: 14px; font-weight: 500; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; outline: none; }
     .select-box:focus { border-color: #1a237e; }
 
@@ -52,7 +52,7 @@
 <body>
 
 <div class="container">
-  <h1>🎯 사격 대회 실시간 대시보드</h1>
+  <h1>🎯 사격 수업 실시간 순위표</h1>
 
   <div class="controls">
     <div class="left-controls">
@@ -64,11 +64,11 @@
 
       <!-- 반 선택 필터 -->
       <select id="class-filter" class="select-box" onchange="filterClass()">
-        <option value="ALL">전체 반 보기</option>
+        <option value="ALL">전체 반 보기 (통합 순위)</option>
       </select>
     </div>
 
-    <!-- 새로고침 및 주기 선택 컨트롤 -->
+    <!-- 새로고침 및 주기 선택 -->
     <div class="refresh-panel">
       <label for="interval-select">주기:</label>
       <select id="interval-select" class="select-box" onchange="changeInterval()">
@@ -91,8 +91,8 @@
   <div class="section-title">🏆 전체 TOP 3 (최고기록 기준)</div>
   <div class="top3-container" id="top3-cards"></div>
 
-  <!-- 반별 순위표 -->
-  <div class="section-title" id="tables-title">📊 반별 순위표</div>
+  <!-- 순위표 영역 -->
+  <div class="section-title" id="tables-title">📊 순위표</div>
   <div id="class-tables"></div>
 </div>
 
@@ -102,7 +102,7 @@
 
   let rawData = {};
   let currentCategory = "기록사격";
-  let selectedClass = "ALL"; // 선택된 반 (기본값: 전체 반)
+  let selectedClass = "ALL";
   let intervalTimer = null;
   let currentInterval = 10000;
 
@@ -117,7 +117,7 @@
       const res = await fetch(GAS_API_URL);
       rawData = await res.json();
 
-      updateClassFilterOptions(); // 반 필터 드롭다운 옵션 갱신
+      updateClassFilterOptions();
       render();
       updateTimestamp();
     } catch (err) {
@@ -129,167 +129,4 @@
     }
   }
 
-  // 데이터에 포함된 반 목록을 추출하여 필터 드롭다운 동적 생성
-  function updateClassFilterOptions() {
-    const list = rawData[currentCategory] || [];
-    const filterSelect = document.getElementById('class-filter');
-    
-    // 고유 반 목록 추출 및 정렬 (6반, 7반, 8반...)
-    const uniqueClasses = Array.from(new Set(list.map(item => item.class ? item.class.toString() : "")))
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-    // 기존 선택값 보존
-    const prevSelection = selectedClass;
-
-    let optionsHtml = `<option value="ALL">전체 반 보기</option>`;
-    uniqueClasses.forEach(cls => {
-      optionsHtml += `<option value="${cls}">${cls}</option>`;
-    });
-
-    filterSelect.innerHTML = optionsHtml;
-
-    // 이전 선택값이 유효하면 유지, 없으면 ALL로 리셋
-    if (uniqueClasses.includes(prevSelection) || prevSelection === "ALL") {
-      filterSelect.value = prevSelection;
-      selectedClass = prevSelection;
-    } else {
-      filterSelect.value = "ALL";
-      selectedClass = "ALL";
-    }
-  }
-
-  function filterClass() {
-    selectedClass = document.getElementById('class-filter').value;
-    render();
-  }
-
-  function changeInterval() {
-    const select = document.getElementById('interval-select');
-    currentInterval = parseInt(select.value, 10);
-    resetTimer();
-  }
-
-  function resetTimer() {
-    if (intervalTimer) clearInterval(intervalTimer);
-    if (currentInterval > 0) {
-      intervalTimer = setInterval(fetchData, currentInterval);
-    }
-  }
-
-  function manualRefresh() {
-    fetchData();
-    resetTimer();
-  }
-
-  function updateTimestamp() {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
-    document.getElementById('last-updated').innerText = `(${timeStr})`;
-  }
-
-  function switchCategory(category) {
-    currentCategory = category;
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.innerText === category);
-    });
-    updateClassFilterOptions();
-    render();
-  }
-
-  function render() {
-    const list = rawData[currentCategory] || [];
-    list.sort((a, b) => a.overallRank - b.overallRank);
-
-    // 1. TOP 3 렌더링 (전체 기준 유지)
-    const top3 = list.slice(0, 3);
-    const medals = ["🥇 1위", "🥈 2위", "🥉 3위"];
-    const classNames = ["rank1", "rank2", "rank3"];
-
-    const top3Html = [0, 1, 2].map(idx => {
-      const item = top3[idx];
-      if (!item) {
-        return `<div class="card ${classNames[idx]}"><div class="badge">${medals[idx]}</div><div>기록 없음</div></div>`;
-      }
-      return `
-        <div class="card ${classNames[idx]}">
-          <div class="badge">${medals[idx]}</div>
-          <div class="player-info">${item.class} ${item.number}번 ${item.name}</div>
-          <div class="score">최고 ${item.best}점</div>
-        </div>
-      `;
-    }).join('');
-    document.getElementById('top3-cards').innerHTML = top3Html;
-
-    // 2. 반별 데이터 그룹화
-    const groupedByClass = {};
-    list.forEach(item => {
-      const cName = item.class ? item.class.toString() : "미지정";
-      if (!groupedByClass[cName]) groupedByClass[cName] = [];
-      groupedByClass[cName].push(item);
-    });
-
-    // 3. 필터링 대상 반 목록 결정 (특정 반 vs 전체 반)
-    let displayClasses = Object.keys(groupedByClass).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    if (selectedClass !== "ALL") {
-      displayClasses = displayClasses.filter(c => c === selectedClass);
-    }
-
-    let classTablesHtml = "";
-    displayClasses.forEach(className => {
-      const members = groupedByClass[className];
-      members.sort((a, b) => a.classRank - b.classRank);
-
-      const maxRounds = Math.max(...members.map(m => m.scores.length), 0);
-      let roundHeadersHtml = "";
-      for (let r = 1; r <= maxRounds; r++) {
-        roundHeadersHtml += `<th>${r}회차</th>`;
-      }
-
-      classTablesHtml += `
-        <h3>📌 ${className}</h3>
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>반 순위</th>
-                <th>전체 순위</th>
-                <th>번호</th>
-                <th>이름</th>
-                <th>최고기록</th>
-                ${roundHeadersHtml}
-              </tr>
-            </thead>
-            <tbody>
-              ${members.map(m => {
-                let scoreTdHtml = "";
-                for (let r = 0; r < maxRounds; r++) {
-                  const val = m.scores[r];
-                  scoreTdHtml += `<td>${val !== undefined && val !== "" ? val : '-'}</td>`;
-                }
-                return `
-                  <tr>
-                    <td class="highlight-rank"><b>${m.classRank}위</b></td>
-                    <td>전체 ${m.overallRank}위</td>
-                    <td>${m.number}</td>
-                    <td>${m.name}</td>
-                    <td><b style="color:#d32f2f;">${m.best}점</b></td>
-                    ${scoreTdHtml}
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    });
-
-    document.getElementById('class-tables').innerHTML = classTablesHtml || "<p>표시할 데이터가 없습니다.</p>";
-  }
-
-  fetchData();
-  resetTimer();
-</script>
-
-</body>
-</html>
+  function
