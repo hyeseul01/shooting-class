@@ -98,7 +98,7 @@
 
 <script>
   // ⚠️ 본인의 Apps Script 웹 앱 배포 URL을 입력하세요.
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyljdqRLhGYe4WNjJhIxplyccRGEIPL7vYrRi9hMHqp05OAoq4aT_zhwY2J3LB45jY7pw/exec";
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxLd8EI7lZ2cfwjLsFxKl0j2N3dHcNU-S7-T4q8gxSJpahNgyfG8IYETPRTAYWDNE0Owg/exec";
 
   let rawData = {};
   let currentCategory = "기록사격";
@@ -109,20 +109,42 @@
   async function fetchData() {
     const refreshBtn = document.getElementById('btn-refresh');
     const refreshIcon = document.getElementById('refresh-icon');
+    const statusText = document.getElementById('last-updated');
 
     try {
       refreshBtn.disabled = true;
       refreshIcon.classList.add('spin');
+      statusText.innerText = "불러오는 중...";
 
-      const res = await fetch(GAS_API_URL);
+      const res = await fetch(GAS_API_URL, {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP 오류 발생 (상태 코드: ${res.status})`);
+      }
+
       rawData = await res.json();
+
+      if (rawData.error) {
+        throw new Error(`시트 스크립트 에러: ${rawData.error}`);
+      }
 
       updateClassFilterOptions();
       render();
       updateTimestamp();
     } catch (err) {
-      console.error("데이터 로드 실패:", err);
-      document.getElementById('last-updated').innerText = "갱신 실패";
+      console.error("데이터 로드 실패 원인:", err);
+      statusText.innerText = "⚠️ 갱신 실패";
+      
+      document.getElementById('class-tables').innerHTML = `
+        <div style="background-color: #ffebee; border: 1px solid #ef5350; color: #c62828; padding: 15px; border-radius: 8px; margin-top: 20px;">
+          <h4 style="margin: 0 0 8px 0;">🚨 데이터를 불러오지 못했습니다.</h4>
+          <p style="margin: 0; font-size: 14px;"><b>원인:</b> ${err.message}</p>
+          <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">(브라우저 F12 키 > Console 탭에서 상세 내용을 확인할 수 있습니다.)</p>
+        </div>
+      `;
     } finally {
       refreshBtn.disabled = false;
       refreshIcon.classList.remove('spin');
@@ -217,7 +239,7 @@
     }).join('');
     document.getElementById('top3-cards').innerHTML = top3Html;
 
-    // 2. 전체 회차 수 계산 (공통 헤더용)
+    // 2. 전체 회차 수 계산
     const maxRounds = Math.max(...list.map(m => (m.scores ? m.scores.length : 0)), 0);
     let roundHeadersHtml = "";
     for (let r = 1; r <= maxRounds; r++) {
@@ -226,9 +248,8 @@
 
     let tablesHtml = "";
 
-    // 3. '전체 반 보기' vs '특정 반 보기' 분기 처리
+    // 3. '전체 반 보기' vs '특정 반 보기' 분기
     if (selectedClass === "ALL") {
-      // [전체 반 보기] -> 모든 반 학생을 전체 순위대로 하나의 표에 합쳐서 표시
       tablesHtml = `
         <h3>📌 전체 반 종합 순위표 (총 ${list.length}명)</h3>
         <div class="table-responsive">
@@ -266,7 +287,6 @@
         </div>
       `;
     } else {
-      // [특정 반 선택 시] -> 해당 반 학생만 필터링하여 반 순위 기준으로 표시
       const members = list.filter(m => (m.class ? m.class.toString() : "") === selectedClass);
       members.sort((a, b) => a.classRank - b.classRank);
 
