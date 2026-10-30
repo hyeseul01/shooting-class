@@ -12,32 +12,62 @@
 
     /* 제어 영역 */
     .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
-    .left-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .left-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .tab-buttons { display: flex; gap: 8px; }
-    .tab-btn { padding: 9px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
+    .tab-btn { padding: 9px 18px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background-color: #e2e8f0; color: #4a5568; transition: all 0.2s ease; }
     .tab-btn.active { background-color: #1a237e; color: #ffffff; box-shadow: 0 4px 6px rgba(26,35,126,0.2); }
 
-    /* 필터 및 드롭다운 */
     .select-box { padding: 8px 12px; font-size: 14px; font-weight: 500; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; outline: none; }
     .select-box:focus { border-color: #1a237e; }
 
-    /* 새로고침 패널 */
-    .refresh-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #718096; }
-    .refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-    .refresh-btn:hover { background-color: #edf2f7; }
-    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    /* 새로고침 및 전체화면 패널 */
+    .right-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #718096; }
+    .action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: #2d3748; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+    .action-btn:hover { background-color: #edf2f7; }
+    .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .spin { animation: spin 0.8s linear infinite; display: inline-block; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
-    /* TOP 3 카드 영역 */
-    .top3-container { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 35px; flex-wrap: wrap; }
-    .card { flex: 1; min-width: 250px; background: #ffffff; padding: 24px 20px; border-radius: 14px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    /* 🏆 TOP 3 반응형 그리드 레이아웃 */
+    .top3-container { display: flex; gap: 16px; margin-bottom: 35px; }
+    .card { flex: 1; background: #ffffff; padding: 22px 18px; border-radius: 14px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .card.rank1 { border-top: 6px solid #fbc02d; background: #fffde7; }
     .card.rank2 { border-top: 6px solid #9e9e9e; }
     .card.rank3 { border-top: 6px solid #bcaaa4; }
-    .badge { font-size: 22px; font-weight: bold; margin-bottom: 12px; }
-    .player-info { font-size: 19px; font-weight: bold; color: #212121; }
-    .score { font-size: 26px; color: #d32f2f; font-weight: bold; margin-top: 8px; }
+    .badge { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+    .player-list { display: flex; flex-direction: column; gap: 6px; }
+    .player-info { font-size: 17px; font-weight: bold; color: #212121; }
+    .score { font-size: 25px; color: #d32f2f; font-weight: bold; margin-top: 10px; }
+
+    /* 📱 모바일/세로모드: 1위가 가로 전체 차지, 2/3위는 하단에 나란히 배치 */
+    @media (max-width: 768px) {
+      .top3-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .card.rank1 {
+        grid-column: 1 / span 2; /* 1위 혼자 위에서 가로로 꽉 차게 */
+        padding: 24px 20px;
+      }
+      .card.rank2, .card.rank3 {
+        grid-column: span 1; /* 2위와 3위는 아래에 1:1로 나란히 */
+        padding: 16px 12px;
+      }
+      .card.rank2 .player-info, .card.rank3 .player-info {
+        font-size: 15px;
+      }
+      .card.rank2 .score, .card.rank3 .score {
+        font-size: 20px;
+      }
+    }
+
+    /* 점수별 뱃지 스타일 */
+    .score-badge { display: inline-block; padding: 2px 7px; font-size: 11px; font-weight: bold; border-radius: 12px; margin-left: 6px; vertical-align: middle; }
+    .badge-master { background-color: #e9d5ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+    .badge-expert { background-color: #fef08a; color: #854d0e; border: 1px solid #fde047; }
+    .badge-sharpshooter { background-color: #bae6fd; color: #0369a1; border: 1px solid #7dd3fc; }
+    .badge-marksman { background-color: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; }
 
     /* 테이블 영역 */
     .section-title { font-size: 19px; font-weight: bold; margin-top: 25px; margin-bottom: 12px; color: #2d3748; }
@@ -47,6 +77,13 @@
     th { background-color: #edf2f7; color: #4a5568; font-weight: bold; }
     tr:hover { background-color: #f7fafc; }
     .highlight-rank { color: #1a237e; font-weight: bold; }
+
+    /* 전체화면 모드 스타일 */
+    body:fullscreen, body:-webkit-full-screen {
+      background-color: #f4f6f9;
+      padding: 30px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -56,20 +93,17 @@
 
   <div class="controls">
     <div class="left-controls">
-      <!-- 종목 전환 탭 -->
       <div class="tab-buttons">
         <button class="tab-btn active" onclick="switchCategory('기록사격')">기록사격</button>
         <button class="tab-btn" onclick="switchCategory('속사')">속사</button>
       </div>
 
-      <!-- 반 선택 필터 -->
       <select id="class-filter" class="select-box" onchange="filterClass()">
         <option value="ALL">전체 반 보기 (통합 순위)</option>
       </select>
     </div>
 
-    <!-- 새로고침 및 주기 선택 -->
-    <div class="refresh-panel">
+    <div class="right-controls">
       <label for="interval-select">주기:</label>
       <select id="interval-select" class="select-box" onchange="changeInterval()">
         <option value="5000">5초</option>
@@ -79,8 +113,12 @@
         <option value="0">자동 갱신 끄기</option>
       </select>
 
-      <button class="refresh-btn" id="btn-refresh" onclick="manualRefresh()">
+      <button class="action-btn" id="btn-refresh" onclick="manualRefresh()">
         <span id="refresh-icon">🔄</span> 즉시 새로고침
+      </button>
+
+      <button class="action-btn" id="btn-fullscreen" onclick="toggleFullscreen()">
+        <span>⛶</span> 전체화면
       </button>
 
       <span id="last-updated">확인 중...</span>
@@ -98,13 +136,22 @@
 
 <script>
   // ⚠️ 본인의 Apps Script 웹 앱 배포 URL을 입력하세요.
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxLd8EI7lZ2cfwjLsFxKl0j2N3dHcNU-S7-T4q8gxSJpahNgyfG8IYETPRTAYWDNE0Owg/exec";
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwDcUDTsF2Z1pNLRvq11w_BypQO7Uzisg-UcykmBay8WpL6j39c0BvySLxcgAP68aDa2w/exec";
 
   let rawData = {};
   let currentCategory = "기록사격";
   let selectedClass = "ALL";
   let intervalTimer = null;
   let currentInterval = 10000;
+
+  function getScoreBadge(score) {
+    if (typeof score !== 'number' || score <= 0) return '';
+    if (score >= 95) return `<span class="score-badge badge-master">🎯 명사수</span>`;
+    if (score >= 90) return `<span class="score-badge badge-expert">🥇 특등사수</span>`;
+    if (score >= 80) return `<span class="score-badge badge-sharpshooter">🥈 1등사수</span>`;
+    if (score >= 70) return `<span class="score-badge badge-marksman">🥉 보통</span>`;
+    return '';
+  }
 
   async function fetchData() {
     const refreshBtn = document.getElementById('btn-refresh');
@@ -121,15 +168,10 @@
         headers: { "Accept": "application/json" }
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP 오류 발생 (상태 코드: ${res.status})`);
-      }
+      if (!res.ok) throw new Error(`HTTP 오류 발생 (상태 코드: ${res.status})`);
 
       rawData = await res.json();
-
-      if (rawData.error) {
-        throw new Error(`시트 스크립트 에러: ${rawData.error}`);
-      }
+      if (rawData.error) throw new Error(`시트 에러: ${rawData.error}`);
 
       updateClassFilterOptions();
       render();
@@ -137,12 +179,10 @@
     } catch (err) {
       console.error("데이터 로드 실패 원인:", err);
       statusText.innerText = "⚠️ 갱신 실패";
-      
       document.getElementById('class-tables').innerHTML = `
         <div style="background-color: #ffebee; border: 1px solid #ef5350; color: #c62828; padding: 15px; border-radius: 8px; margin-top: 20px;">
           <h4 style="margin: 0 0 8px 0;">🚨 데이터를 불러오지 못했습니다.</h4>
           <p style="margin: 0; font-size: 14px;"><b>원인:</b> ${err.message}</p>
-          <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">(브라우저 F12 키 > Console 탭에서 상세 내용을 확인할 수 있습니다.)</p>
         </div>
       `;
     } finally {
@@ -200,6 +240,19 @@
     resetTimer();
   }
 
+  // ⛶ 전체화면 전환 토글 함수
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        alert(`전체화면 전환 실패: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
   function updateTimestamp() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
@@ -219,24 +272,50 @@
     const list = rawData[currentCategory] || [];
     list.sort((a, b) => a.overallRank - b.overallRank);
 
-    // 1. TOP 3 렌더링
-    const top3 = list.slice(0, 3);
-    const medals = ["🥇 1위", "🥈 2위", "🥉 3위"];
-    const classNames = ["rank1", "rank2", "rank3"];
-
-    const top3Html = [0, 1, 2].map(idx => {
-      const item = top3[idx];
-      if (!item) {
-        return `<div class="card ${classNames[idx]}"><div class="badge">${medals[idx]}</div><div>기록 없음</div></div>`;
+    // 1. TOP 3 공동 순위 그룹화 렌더링
+    // rank별로 그룹화: { 1: [...학생들], 2: [...], 3: [...] }
+    const rankGroups = {};
+    list.forEach(item => {
+      if (item.overallRank <= 3) {
+        if (!rankGroups[item.overallRank]) rankGroups[item.overallRank] = [];
+        rankGroups[item.overallRank].push(item);
       }
+    });
+
+    const targetRanks = [1, 2, 3];
+    const medals = { 1: "🥇 1위", 2: "🥈 2위", 3: "🥉 3위" };
+    const classNames = { 1: "rank1", 2: "rank2", 3: "rank3" };
+
+    const top3Html = targetRanks.map(r => {
+      const group = rankGroups[r] || [];
+      const isCoRank = group.length > 1 ? " (공동)" : "";
+      
+      if (group.length === 0) {
+        return `
+          <div class="card ${classNames[r]}">
+            <div class="badge">${medals[r]}</div>
+            <div style="color: #999; margin-top: 10px;">기록 없음</div>
+          </div>
+        `;
+      }
+
+      // 동점인 학생들을 세로로 나열
+      const playersHtml = group.map(p => {
+        const badgeHtml = getScoreBadge(p.best);
+        return `<div class="player-info">${p.class} ${p.number}번 ${p.name} ${badgeHtml}</div>`;
+      }).join('');
+
+      const bestScore = group[0].best;
+
       return `
-        <div class="card ${classNames[idx]}">
-          <div class="badge">${medals[idx]}</div>
-          <div class="player-info">${item.class} ${item.number}번 ${item.name}</div>
-          <div class="score">최고 ${item.best}점</div>
+        <div class="card ${classNames[r]}">
+          <div class="badge">${medals[r]}${isCoRank}</div>
+          <div class="player-list">${playersHtml}</div>
+          <div class="score">최고 ${bestScore}점</div>
         </div>
       `;
     }).join('');
+
     document.getElementById('top3-cards').innerHTML = top3Html;
 
     // 2. 전체 회차 수 계산
@@ -248,7 +327,7 @@
 
     let tablesHtml = "";
 
-    // 3. '전체 반 보기' vs '특정 반 보기' 분기
+    // 3. '전체 반 보기' vs '특정 반 보기'
     if (selectedClass === "ALL") {
       tablesHtml = `
         <h3>📌 전체 반 종합 순위표 (총 ${list.length}명)</h3>
@@ -265,18 +344,25 @@
               </tr>
             </thead>
             <tbody>
-              ${list.map(m => {
+              ${list.map((m, idx) => {
                 let scoreTdHtml = "";
                 for (let r = 0; r < maxRounds; r++) {
                   const val = m.scores ? m.scores[r] : undefined;
                   scoreTdHtml += `<td>${val !== undefined && val !== "" ? val : '-'}</td>`;
                 }
+                const badgeHtml = getScoreBadge(m.best);
+                
+                // 앞뒤 사람과 순위가 같으면 공동 표시
+                const isCoRank = (idx > 0 && list[idx - 1].overallRank === m.overallRank) ||
+                                 (idx < list.length - 1 && list[idx + 1].overallRank === m.overallRank);
+                const rankText = isCoRank ? `공동 ${m.overallRank}위` : `${m.overallRank}위`;
+
                 return `
                   <tr>
-                    <td class="highlight-rank"><b>${m.overallRank}위</b></td>
+                    <td class="highlight-rank"><b>${rankText}</b></td>
                     <td><b>${m.class}</b></td>
                     <td>${m.number}</td>
-                    <td>${m.name}</td>
+                    <td><b>${m.name}</b> ${badgeHtml}</td>
                     <td><b style="color:#d32f2f;">${m.best}점</b></td>
                     ${scoreTdHtml}
                   </tr>
@@ -305,18 +391,24 @@
               </tr>
             </thead>
             <tbody>
-              ${members.map(m => {
+              ${members.map((m, idx) => {
                 let scoreTdHtml = "";
                 for (let r = 0; r < maxRounds; r++) {
                   const val = m.scores ? m.scores[r] : undefined;
                   scoreTdHtml += `<td>${val !== undefined && val !== "" ? val : '-'}</td>`;
                 }
+                const badgeHtml = getScoreBadge(m.best);
+
+                const isCoClassRank = (idx > 0 && members[idx - 1].classRank === m.classRank) ||
+                                      (idx < members.length - 1 && members[idx + 1].classRank === m.classRank);
+                const classRankText = isCoClassRank ? `공동 ${m.classRank}위` : `${m.classRank}위`;
+
                 return `
                   <tr>
-                    <td class="highlight-rank"><b>${m.classRank}위</b></td>
+                    <td class="highlight-rank"><b>${classRankText}</b></td>
                     <td>전체 ${m.overallRank}위</td>
                     <td>${m.number}</td>
-                    <td>${m.name}</td>
+                    <td><b>${m.name}</b> ${badgeHtml}</td>
                     <td><b style="color:#d32f2f;">${m.best}점</b></td>
                     ${scoreTdHtml}
                   </tr>
